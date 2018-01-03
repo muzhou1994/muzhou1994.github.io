@@ -13,7 +13,8 @@ tags:
 
 ### 用Java语言来实现ipv4代码识别过程
    > - [这里](https://www.hackerrank.com/challenges/ip-address-validation/problem)是hackrank的相似题目。
-    ```
+
+    ~~~ java
     private static String check(String s) {
             String[] arr = s.split("\\.");
             try {
@@ -44,7 +45,8 @@ tags:
             }
             return "Neither";
         }
-    ```
+    ~~~
+
 ### Java中int，Integer区别是什么？
    > - int是基本类型，Integer是对象类型。
    > - 函数调用时，int是传递值，Integer传递引用。
