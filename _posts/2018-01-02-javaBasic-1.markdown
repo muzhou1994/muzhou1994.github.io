@@ -14,38 +14,38 @@ tags:
 ### 用Java语言来实现ipv4代码识别过程
    > - [这里](https://www.hackerrank.com/challenges/ip-address-validation/problem)是hackrank的相似题目。
 
-    ~~~ java
-    private static String check(String s) {
-            String[] arr = s.split("\\.");
-            try {
-                if (arr.length == 4) {
-                    for (String each : arr) {
-                        Integer num = Integer.valueOf(each);
-                        if (num != null && num <= 255 && num >= 0) {
-                            continue;
-                        }
-                        return "Neither";
+~~~ java
+private static String check(String s) {
+        String[] arr = s.split("\\.");
+        try {
+            if (arr.length == 4) {
+                for (String each : arr) {
+                    Integer num = Integer.valueOf(each);
+                    if (num != null && num <= 255 && num >= 0) {
+                        continue;
                     }
-                    return "IPv4";
+                    return "Neither";
                 }
-
-                Integer max = 65535;
-                arr = s.split(":");
-                if (arr.length == 8) {
-                    for (String each : arr) {
-                        Integer num = Integer.parseInt(each, 16);
-                        if (num != null && num <= max && num >= 0) {
-                            continue;
-                        }
-                        return "Neither";
-                    }
-                    return "IPv6";
-                }
-            } catch (Exception e){
+                return "IPv4";
             }
-            return "Neither";
+
+            Integer max = 65535;
+            arr = s.split(":");
+            if (arr.length == 8) {
+                for (String each : arr) {
+                    Integer num = Integer.parseInt(each, 16);
+                    if (num != null && num <= max && num >= 0) {
+                        continue;
+                    }
+                    return "Neither";
+                }
+                return "IPv6";
+            }
+        } catch (Exception e){
         }
-    ~~~
+        return "Neither";
+    }
+~~~
 
 ### Java中int，Integer区别是什么？
    > - int是基本类型，Integer是对象类型。
