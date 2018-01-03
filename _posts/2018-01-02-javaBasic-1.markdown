@@ -1,0 +1,71 @@
+---
+layout:     post
+title:      "Java基本功（一）"
+subtitle:   "面试题"
+date:       18/1/2 下午6:47
+author:     "MuZhou"
+header-img:  "/img/2017/bg-javaBasic-header.jpg"
+catalog: true
+tags:
+    - Java
+---
+
+### 用Java语言来实现ipv4代码识别过程
+### Java中int，Integer区别是什么？
+   > - int是基本类型，Integer是对象类型。
+   > - 函数调用时，int是传递值，Integer传递引用。
+   > - 初始化时，int为0，Integer初始化为null。
+   > - int装箱后获得Integer，Integer拆箱后得int。装箱与拆箱有缓存，JVM默认缓存-128~127范围内的，缓存最大值可以通过-XX:AutoBoxCacheMax参数调整。
+
+### Java多线程中，synchronized和Lock有什么异同点；
+  > - 都是用来解决多线程中[race condition](https://en.wikipedia.org/wiki/Race_condition)的问题。
+  > - synchronized是Java关键字，可以修饰方法及代码块。修饰静态方法或代码块时，锁的对象是当前类的class对象，非静态时则是当前对象。
+  > - Lock是Java1.5后的一个接口，JDK中的实现有ReentrantLock、ReentrantReadWriteLock、StampedLock。
+  > - synchronized是隐式锁，Lock是显式锁，需要显式获取和释放。
+
+|功能| synchronized|ReentrantLock|ReentrantReadWriteLock|StampedLock|
+|----|----|----|----|----|
+|支持重入|是|是|是|否|
+支持乐观锁|否|是|是|是
+支持公平锁|否|是|是|是
+支持中断|否|是|是|是
+
+
+### java中锁的种类各自使用的场景；
+##### Synchronized
+> - Java关键字，对象锁。
+>- 基于jvm monitorenter及monitorexit字节码指令，是一种重量级锁。
+>- JVM 1.6中加了许多优化，自旋、锁消除、锁粗化、轻量级锁、偏向锁等。
+
+##### Lock
+ >- java.util.concurrent提供的锁机制，相比于synchronized支持许多新特性，支持中断、支持公平锁、支持绑定多个条件。
+ >- ReentrantLock，与Synchronized类似，但是拥有Lock的新特性。
+ >- ReentrantReadWriteLock, 读写锁，分为读锁及写锁，读锁之间不互斥，写锁之间互斥，读写之间互斥。
+ >- StampedLock, Java1.8引入，使用乐观读的方式解决ReentrantReadWriteLock读多写少时写线程饥饿的问题。
+
+##### Semaphore
+>- 常用于多个线程之间传递信号,支持多个线程获取许可，用完后归还，获取不到许可的线程被阻塞。
+
+### java内存泄漏的定位与分析
+
+### jdk7和jdk8中有哪些新特性；jdk9又有哪些值得期待的特性；
+##### jdk7
+>- switch支持String类型。
+>- 数字字面量支持下划线，支持二进制。
+>- 异常处理改进,catch支持捕获多个异常，
+>- G1垃圾收集器。
+
+##### jdk8
+>- Lambda表达式。
+>- 接口支持默认方法及静态方法。
+>- 方法引用。
+>- 重复注解，同个地方可以多次使用同一个注解。
+>- Stream API。
+>- Date/Time API。
+>- 使用Metaspace代替持久代。
+
+##### jdk9
+>- 模块化
+>- G1作为默认垃圾收集器。
+>- jshell
+
