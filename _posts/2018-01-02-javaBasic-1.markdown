@@ -4,7 +4,7 @@ title:      "Java基本功（一）"
 subtitle:   "面试题"
 date:       18/1/2 下午6:47
 author:     "MuZhou"
-header-img:  "img/2017/bg-javaBasic-header.jpg"
+header-img:  "img/2018/bg-javaBasic-header.jpg"
 catalog: true
 tags:
     - Java
