@@ -1,13 +1,13 @@
 ---
 layout:     post
 title:      "Java垃圾回收（一）"
-subtitle:   "概述"
+subtitle:   "落落者难合亦难分。欣欣者易亲艺易散。"
 date:       18/1/4 下午12:45
 author:     "MuZhou"
-header-img:  "img/2018/bg-JavaGarbageCollection.jpg"
+header-img:  "img/2018/bg-JavaGarbageCollection-header.jpg"
 catalog: true
 tags:
-    - java
+    - Java
     - gc
 ---
 
@@ -55,7 +55,7 @@ Java中GC Roots般包含以下几种对象：
 4. 老年代空间不足。
 
 （老年代空间不足的情况如图4种）
-![内存分配过程](/img/2018/JavaGarbageCollection-memory-allocation.jpg)
+![内存分配过程](/img/2018/JavaGarbageCollection-memory-allocation.png)
 
 ## 如何进行回收
 
