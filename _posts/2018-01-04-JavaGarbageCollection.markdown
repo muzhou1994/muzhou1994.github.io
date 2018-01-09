@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      "Java垃圾回收（一）"
-subtitle:   "落落者难合亦难分。欣欣者易亲艺易散。"
+subtitle:   "落落者难合亦难分。欣欣者易亲亦易散。"
 date:       18/1/4 下午12:45
 author:     "MuZhou"
 header-img:  "img/2018/bg-JavaGarbageCollection-header.jpg"

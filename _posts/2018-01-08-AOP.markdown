@@ -23,32 +23,33 @@ AOP全称aspect-oriented programming，与OOP是同一层级的概念，是一�
 安全、事务管理、缓存等，而这些功能无法通过传统的设计或实现从系统中分离出来，这样的功能就叫做横切关注点。
 
 那么横切关注点怎么分离，从哪里分离呢？AOP是将横切关注点从我们的核心业务逻辑中分离出来，而在了解怎么分离之前，我们先了解一下AOP的一些术语：
+
 - Aspect:切面，是AOP的模块化单位，类同于Class对OOP的意义。在Spring中，Aspect是一个标准的class，Spring提供两种机制将其定义为Aspect：
     1. 通过XML配置。
 
-~~~ xml
-<aop:config>
-    <aop:aspect id="myAspect" ref="aBean">
-        ...
-    </aop:aspect>
-</aop:config>
+       ~~~ xml
+       <aop:config>
+           <aop:aspect id="myAspect" ref="aBean">
+               ...
+           </aop:aspect>
+       </aop:config>
 
-<bean id="aBean" class="...">
-    ...
-</bean>
-~~~
+       <bean id="aBean" class="...">
+           ...
+       </bean>
+       ~~~
 
     2. 通过@Aspect注解。
 
-~~~ java
-package org.xyz;
-import org.aspectj.lang.annotation.Aspect;
+       ~~~ java
+       package org.xyz;
+       import org.aspectj.lang.annotation.Aspect;
 
-@Aspect
-public class NotVeryUsefulAspect {
+       @Aspect
+       public class NotVeryUsefulAspect {
 
-}
-~~~
+       }
+       ~~~
 
 - Join point: 连接点，是程序执行中的特定的点，Aspect从这个点插入。可以作为Join Point的有：
     1. 字段：AspectJ和JBoss支持。
