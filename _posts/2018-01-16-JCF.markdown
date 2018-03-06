@@ -21,7 +21,7 @@ tags:
 
 在Java集合框架中，最核心的接口有两个：Collection和Map，按照元素是否有序，Collection又派生出有序的List、Queue，以及无序的Set三个核心接口。
 需要注意的是，Map并不属于Collection这个体系中，它与Collection是相互独立的两个接口，不像List等接口集成自Collection。
-![Collection体系](/img/2018/javaCollectionsFramework/overview)
+![Collection体系](/img/2018/javaCollectionsFramework/overview.png)
 
 Collection接口中定义了以下方法：
 
