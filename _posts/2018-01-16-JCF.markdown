@@ -185,21 +185,21 @@ Map中定义的方法：
 Map有三个通用实现，HashMap、LinkedHashMap、TreeMap，除此之外还有一些特殊用途的实现，比如EnumMap、WeakHashMap、IdentifyHashMap
 ，还有一大类是java.util.concurrent包内ConcurrentMap接口的实现，在并发场景下使用，如ConcurrentHashMap。
 
- #### HashMap
+#### HashMap
  HashMap是Map接口最常用的一个实现，它不保障map中的元素顺序，且不保障线程安全。HashMap内部是一个Entry数组，每个Entry持有
  一个key、一个value、一个next指向下一个Entry以及一个hash值。hash值是调用内部的hash方法计算得到的，具体实现是将key的hashCode
  与其高16位进行异或, 得到一个int值。
 
- #### LinkedHashMap
+#### LinkedHashMap
  LinkedHashMap与HashMap类似，不过LinkedHashMap可以支持按输入顺序或按访问顺序进行遍历。
 
- #### TreeMap
+#### TreeMap
  TreeMap是一个有序Map，它支持按map中的key的顺序进行遍历，内部使用了红黑树来保障顺序。
 
- #### EnumMap
+#### EnumMap
  EnumMap是一类特殊的map，其key只能是枚举类型，内部使用一个数组，性能非常好。
 
- #### ConcurrentHashMap
+#### ConcurrentHashMap
  ConcurrentHashMap是Java并发包里一个线程安全版实现，性能比HashTable高，都是基于synchronized去加的锁。
 
 
