@@ -20,7 +20,7 @@ tags:
 - 算法：执行计算的方法，比如说检索和排序，本质上是可重用的功能。
 
 在Java集合框架中，最核心的接口有两个：Collection和Map，按照元素是否有序，Collection又派生出有序的List、Queue，以及无序的Set三个核心接口。
-需要注意的是，Map并不属于Collection这个体系中，它与Collection是相互独立的两个接口，不像List等接口集成自Collection。
+需要注意的是，Map并不属于Collection这个体系中，它与Collection是相互独立的两个接口，不像List等接口继承自Collection。
 ![Collection体系](/img/2018/javaCollectionsFramework/overview.png)
 
 Collection接口中定义了以下方法：
@@ -76,7 +76,7 @@ Collection接口中定义了以下方法：
 在了解集合Collection中定义的方法后，我们来深入由Collection派生出的其他三个接口特性及其主要实现。
 
 ### Set
-Set接口继承自Collection，且仅包含Collection中定义的方法，但是限制了不能由重复元素，即Set是不包含重复元素的集合。
+Set接口继承自Collection，且仅包含Collection中定义的方法，但是限制了不能有重复元素，即Set是不包含重复元素的集合。
 同时，Set也为equals和hashCode两个方法增加了更强的契约，约定包含相同元素的两个Set即相等。
 Set接口有三个通用实现，分别是HashSet、TreeSet和LinkedHashSet，以及两个特殊用途的Set实现，EnumSet和CopyOnWriteArraySet。
 ![Set](/img/2018/javaCollectionsFramework/set.png)
@@ -185,21 +185,21 @@ Map中定义的方法：
 Map有三个通用实现，HashMap、LinkedHashMap、TreeMap，除此之外还有一些特殊用途的实现，比如EnumMap、WeakHashMap、IdentifyHashMap
 ，还有一大类是java.util.concurrent包内ConcurrentMap接口的实现，在并发场景下使用，如ConcurrentHashMap。
 
-#### HashMap
+##### HashMap
  HashMap是Map接口最常用的一个实现，它不保障map中的元素顺序，且不保障线程安全。HashMap内部是一个Entry数组，每个Entry持有
  一个key、一个value、一个next指向下一个Entry以及一个hash值。hash值是调用内部的hash方法计算得到的，具体实现是将key的hashCode
  与其高16位进行异或, 得到一个int值。
 
-#### LinkedHashMap
+##### LinkedHashMap
  LinkedHashMap与HashMap类似，不过LinkedHashMap可以支持按输入顺序或按访问顺序进行遍历。
 
-#### TreeMap
+##### TreeMap
  TreeMap是一个有序Map，它支持按map中的key的顺序进行遍历，内部使用了红黑树来保障顺序。
 
-#### EnumMap
+##### EnumMap
  EnumMap是一类特殊的map，其key只能是枚举类型，内部使用一个数组，性能非常好。
 
-#### ConcurrentHashMap
+##### ConcurrentHashMap
  ConcurrentHashMap是Java并发包里一个线程安全版实现，性能比HashTable高，都是基于synchronized去加的锁。
 
 
@@ -225,9 +225,9 @@ Map有三个通用实现，HashMap、LinkedHashMap、TreeMap，除此之外还�
 - 为什么说ConcurrentHashMap性能比HashTable好？
 
   ~~~
-  HashTable在的put方法是被synchronized修饰的，也就是每次put操作都会加锁，而ConcurrentHashMap的put操作synchronized是加在bucket
-  中第一个Node上的。也就是说，ConcurrentHashMap同时put两个元素，如果这两个元素key值hash后落在两个不同的bucket中，则它们彼此不会争用同一把锁，
-  put操作可以同时进行，而HashTable则必须等第一个元素put之后才可以put第二个元素。
+  HashTable中的get和put方法都是被synchronized修饰的，也就是每次get、put操作都会加锁，而ConcurrentHashMap只有put
+  操作加锁，且synchronized是加在bucket中第一个Node上的。也就是说，ConcurrentHashMap读操作是不会被锁的，以及同时put两个元素时，如果这两个元素key值hash
+  后落在两个不同的bucket中，它们彼此不会争用同一把锁， put操作可以同时进行。而HashTable中get和put操作都有可能被阻塞。
   ~~~
 
 参考资料：
