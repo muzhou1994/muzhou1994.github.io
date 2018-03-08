@@ -1,0 +1,139 @@
+---
+layout:     post
+title:      "Java Object中的方法"
+subtitle:   ""
+date:       18/3/8 下午9:18
+author:     "MuZhou"
+header-img:  "img/2018/bg-Object-header"
+catalog: true
+tags:
+    - Java
+---
+
+最近面试总被问到Java Object中有哪些方法、各自的功能，发现自己有些地方还是有点模糊，总结记录下。
+
+![Object中的方法](/img/2018/javaObject/javaObjectMethod.png)
+
+如上图所示，JDK8中Java Object类一共有12个方法，可以大致归为以下几类
+
+- 用于线程通信的：notify()、 notifyAll()、wait()、wait(long timeout)、wait(long timeout, int nanos)
+- 用于比较两个对象是否相等的：equals(Object obj)、hashCode()
+- 与垃圾回收相关的：finalize()
+- 获取对象信息的：getClass()、toString()
+- 复制对象的：clone()
+- 映射native方法名的：registerNatives()
+
+#### private static native void registerNatives();
+在写本文之前竟然一直不知道Object类中还有一个这个方法，这个方法其实与native方法调用有关。我们知道，在Java类中可以
+用native关键字声明一个native方法，方法的具体实现放在C/C++中，那么Java类中所声明的方法其方法名与具体实现时的方法名肯定存在一个
+映射关系，以便调用的时候可以找到具体实现的方法体运行。根据JNI方法的命名规范，在C/C++中实现时需要命名
+为Java\_(下划线隔开的全限定类名)\_类中方法名，举个例子，比如我有以下一个类：
+
+~~~ java
+package com.mogujie.muzhou;
+
+public  class Test {
+    public static native void doTest();
+}
+~~~
+
+包名为"com.mogujie.muzhou"，类名为"Test"，方法名为"doTest"，那么以JNI的规范，我需要在C/C
+++中实现一个Java_com_mogujie_muzhou_Test_doTest的方法，这个方法名实在太长了，所以Java的Object类提供了registerNatives()方法，
+用以进行一个自定义映射，将Java里声明的doTest方法映射为简明易懂的方法，比如Object类中的映射：
+
+~~~ c
+static JNINativeMethod methods[] = {
+    {"hashCode",    "()I",                    (void *)&JVM_IHashCode},
+    {"wait",        "(J)V",                   (void *)&JVM_MonitorWait},
+    {"notify",      "()V",                    (void *)&JVM_MonitorNotify},
+    {"notifyAll",   "()V",                    (void *)&JVM_MonitorNotifyAll},
+    {"clone",       "()Ljava/lang/Object;",   (void *)&JVM_Clone},
+};
+
+JNIEXPORT void JNICALL
+Java_java_lang_Object_registerNatives(JNIEnv *env, jclass cls)
+{
+    (*env)->RegisterNatives(env, cls,
+                            methods, sizeof(methods)/sizeof(methods[0]));
+}
+~~~
+
+可以看出，Object类中的hashCode、wait、notify、notifyAll和clone方法都映射为了右侧简洁明了的方法名，而registerNatives
+方法还是使用了JNI的规范，在C代码中对应到了Java_java_lang_Object_registerNatives方法。
+Object类中有个静态代码块调用了registerNatives，也就是说在Object类初始化时，这套映射规则就会建立起来了。
+
+~~~ java
+    private static native void registerNatives();
+    static {
+        registerNatives();
+    }
+~~~
+
+#### 线程同步方法
+
+-     public final native void notify();
+-     public final native void notifyAll();
+-     public final native void wait(long timeout) throws InterruptedException;
+-     public final void wait(long timeout, int nanos) throws InterruptedException {
+-     public final void wait() throws InterruptedException {
+
+可以看到这五个方法全都是native方法，且全都是final修饰不可重写的。一般前两个方法和后三个方法搭配着使用，可以实现经典的生产者和
+消费者模型，但是需要注意的是，这几个方法调用时都需要保障调用的线程必须持有该对象的监视器。这个是什么意思呢，用简单的话来讲就是
+wait及notify调用必须放在synchronized所修饰的代码块中,且synchronized锁住的对象与调用wait和notify的对象为同一个。
+
+除此之外，notify()和notifyAll()好像有点相似，那么它们之间有什么区别呢？像方法名所说的那样，notify唤起一个等待的线程，而
+notifyAll()唤起多个等待的线程吗？
+
+是也不是。我们先从Java线程状态说起，Java中线程有六种状态，new、runnable、blocked、waiting、
+timed_waiting、terminated，其中blocked状态是在等待锁，waiting状态是在等待另一个线程唤起。也就是说在调用wait
+方法后，线程会进入waiting状态。那么显而易见，调用notify，JVM会随机唤起一个线程使它进入blocked状态，等当前线程执行完synchronized
+代码块后，刚才唤起的进入blocked状态的线程能够得到锁然后被调度。而notifyAll方法会唤起所有等待的线程，使它们都进入blocked状态，然后优先级比较高的有可能会
+先获取到锁执行任务，其他线程仍然是blocked状态，等待下一次获取锁的机会。所以从这个角度来看，notifyAll比notify要安全，不会造成饥饿。（notify方法唤起一个线程，
+如果该线程执行结束后不调用notify方法唤起其他线程，则会造成其他线程饥饿，一直等待着。）
+
+#### protected void finalize() throws Throwable { }
+finalize方法与JVM的垃圾回收机制有关，当JVM通过可达性分析确定某一个对象不再被引用，可以被回收时，JVM会把这个对象从 finalization queue中取出，
+执行它的finalize方法。Object的finalize类同于C++的析构方法，其理念就是当对象不再存活时，能够释放一些资源，然而由于JVM不能保证
+GC的时间，所以finalize的功能相当鸡肋，可能未来某个版本就要被移除了。
+
+#### 获取对象信息
+-     public final native Class<?> getClass()
+-     public String toString()
+
+getClass是一个native方法，toString在Object中的简单实现是拼接全限定类名与类hashCode的十六进制字符串。
+
+~~~ java
+    public String toString() {
+        return getClass().getName() + "@" + Integer.toHexString(hashCode());
+    }
+~~~
+
+#### protected native Object clone() throws CloneNotSupportedException
+clone方法用于复制出一个新的对象，调用该方法必须实现Cloneable接口。
+
+#### 用于比较两个对象是否相等
+-     public native int hashCode()
+-     public boolean equals(Object obj)
+
+equals在Object实现同样简单，使用==比较两个对象地址是否相同。在实际应用中我们很多时候会去重写equals方法，JDK中要求
+equals方法返回true时，两个对象的hashCode必须相同，也就是说我们重写equals方法后必须同样重写hashCode方法，并且要选择合适的
+实现，以便减少碰撞。
+
+### QA
+
+- 如果equals方法返回true，但hashCode返回不同值，会发生什么？
+
+  ~~~
+  会导致Java集合框架功能异常，比如现在要向HashMap中put两个元素，如果两个key equals返回true，正常情况下后put的值需要覆盖前者，
+  然后hashCode不同会导致覆盖失败。
+  反之，如果equals返回false，但hashCode返回相同值，在向HashMap中put元素时，会导致所有元素都放进了同一个bucket。
+  ~~~
+
+
+参考资料：
+
+1. [registerNatives](https://stackoverflow.com/questions/1010645/what-does-the-registernatives-method-do)
+2. [Thread.State](https://docs.oracle.com/javase/7/docs/api/java/lang/Thread.State.html)
+3. [finalization](http://www.oracle.com/technetwork/articles/java/finalization-137655.html)
+4. [Java-Finalize-Deprecated](http://www.infoq.com/cn/news/2017/03/Java-Finalize-Deprecated)
+5. [Object](https://docs.oracle.com/javase/7/docs/api/java/lang/Object.html)
