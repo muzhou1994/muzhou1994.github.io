@@ -10,6 +10,7 @@ tags:
     - Java
     - leetcode
     - 面向工资编程
+    - 动态规划
 ---
 
 十一月是动态规划的一个月，这个月目标做3道easy，四道Medium，一道Hard。
