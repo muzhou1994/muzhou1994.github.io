@@ -1,0 +1,237 @@
+---
+layout:     post
+title:      救命，线上表varchar长度不够用了！
+subtitle:   Know your limits but never stop trying to exceed them.
+date:       2021/12/3 11:42
+author:     "MuZhou"
+header-img:  "img/2021/bg-mysql-ddl-header.jpg"
+catalog: true
+tags:
+    - mysql
+    - 面向工资编程
+---
+最近收到了一个线上报错，线上某个业务表（数据量7000w行）varchar(5120)字段长度不够用了。  
+第一反应，不然直接把varchar(5120)改成text？ 但直接改表结构会影响业务吗？  
+于是搭建了一个测试库，写入同等规模的数据量后，执行表结构变更：
+```sql
+alter table `xxx` modify column `column_xxx` text
+```
+果不其然，确实有影响。  
+alter语句大概执行了10分钟，期间可以读取数据，但是写入会被阻塞。  
+
+本文尝试剖析这个场景下alter table的执行过程、innoDB对online ddl的支持和限制，以及业界其他解决方案。  
+为了方便地验证猜想，本文会使用到：
+- MySQL 5.6 （5.6.46）  
+- MySQL 5.7 （5.7.23）  
+- MySQL 8.0 （8.0.27）  
+- 测试数据表user，大概写入300w条数据  
+```sql
+CREATE TABLE `user` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(32) DEFAULT NULL,
+  `age` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+```
+
+#### DDL是怎么执行的？
+不同版本的MySQL执行DDL不太一样，在MySQL 5.5及之前，除了少数几个操作（换字段名、改字段默认值等），其他DDL执行过程大概是：  
+> ALTER TABLE works in the following way:    
+>
+>- Create a new table named A-xxx with the requested structural changes.
+>
+>- Copy all rows from the original table to A-xxx.
+>
+>- Rename the original table to B-xxx.
+>
+>- Rename A-xxx to your original table name.
+>
+>- Delete B-xxx. 
+
+第二步复制数据比较耗时，尤其是遇到我们这种几千万行的大表。   
+所以针对DDL的优化也主要集中在：
+1. 减少复制：有些DDL是不需要复制数据的
+2. 减少复制时的阻塞：有时复制不可避免，那就尽量在复制过程中不影响正常的DQL（select)、DML(update、inser、delete)
+
+*(以下优化均在InnoDB引擎层）*     
+基于此，MySQL 5.5率先优化了增/删二级索引的DDL，即[Fast Index Creation](https://docs.oracle.com/cd/E19957-01/mysql-refman-5.5/storage-engines.html#innodb-create-index)，优化后add index不需要再复制数据，只需要遍历主键索引的那棵B+树、对新索引字段排序，在这过程中DML会被阻塞，DQL可以执行。
+
+5.6又优化了更多DDL，并引入了“[Online DDL](https://dev.mysql.com/doc/refman/5.6/en/innodb-online-ddl.html)”的概念，和“ALGORITHM”、“LOCK”两个子句。     
+所谓Online DDL就是变更过程支持并发DML。  
+ALGORITHM可以取“COPY”和“INPLACE”两个值，COPY对应之前DML会被阻塞的方式，INPLACE是新引入的，但**INPLACE也不等于一定不阻塞DML**。   
+LOCK有四个值：    
+
+| LOCK值 | 并发DQL | 并发DML |
+| :--: | :--: | :--: |
+| NONE | ✅ | ✅ |
+| SHARED | ✅ | ❌ |
+| DEFAULT | 看情况 | 看情况 |
+| EXCLUSIVE | ❌ | ❌ |
+
+5.7进一步优化了更多DDL。     
+
+到8.0，ALGORITHM引入了新值“INSTANT”。INSTANT只改表结构不改数据，它最大的优势在于执行非常快，DML几乎不受影响。  
+但支持INSTANT的DDL非常少，只有add column这个语句能看出INPLACE和INSTANT的明显区别。
+
+| mysql8 |
+| :--: |
+| `alter table user add column test_1 int(11),ALGORITHM=INSTANT;`<br/>Query OK, 0 rows affected, 1 warning (0.07 sec)<br/>Records: 0  Duplicates: 0  Warnings: 1|
+|`alter table user add column test_2 int(11),ALGORITHM=INPLACE;`<br/>Query OK, 0 rows affected, 1 warning (4.84 sec)<br/>Records: 0  Duplicates: 0  Warnings: 1|
+
+
+#### DDL执行怎么加锁的
+DDL操作最主要的锁就是MDL（Metadata Lock），同样也分为读锁和写锁。日常的增删改查都会获取MDL读锁，当需要变更表结构时，就会用到MDL写锁，**而MDL写锁（持有或者申请）会阻塞增删改查**。      
+
+| 连接1 | 连接2 | 连接3 |
+| :--: | :--: | :--: |
+| `start transaction;`{:.language-sql} <br/> <br/> `select * from user where id = 1;`|||
+||`alter table user modify column name varchar(33);` <br/>（阻塞中）||
+||| `start transaction;` <br/><br/> `select * from user where id = 2;` <br/> （阻塞中）|
+|`commit;` <br/>|||
+|||*（取到数据）* <br/> *1 row in set (2 min 30.59 sec)*|
+||（阻塞中）|`commit;`|
+||*Query OK, 3014573 rows affected (3 min 9.38 sec)* <br/> *Records: 3014573  Duplicates: 0  Warnings: 0*|  |
+
+可以看到，在连接2的DDL语句申请DML写锁之后，连接3的select也会被阻塞。   
+连接2申请MDL写锁，连接3就需要等2拿到写锁并释放之后，才能获取MDL读锁。     
+最后连接3 commit释放MDL读锁之后，连接2才能执行完成。
+
+根据[《MySQL 实战 45 讲》](https://time.geekbang.org/column/article/69862)，加锁过程是这样的：
+> Online DDL的过程是这样的：    
+1. 拿MDL写锁   
+2. 降级成MDL读锁     
+3. 真正做DDL   
+4. 升级成MDL写锁      
+5. 释放MDL锁    
+>   
+> 1、2、4、5如果没有锁冲突，执行时间非常短。第3步占用了DDL绝大部分时间，这期间这个表可以正常读写数据，是因此称为“online ”    
+>   
+> 我们文中的例子，是在第一步就堵住了
+
+这个说法清晰明了，简单易懂，我们的实验结果也印证了它，连接2被连接3阻塞正是发生在“*4.升级成MDL写锁*”，阻塞着等3释放MDL读锁。  
+然而官方手册里是这么描述的：  
+>Online DDL operations can be viewed as having three phases:
+>- **Phase 1: initialization**  
+    In the initialization phase, the server determines how much concurrency is permitted during the operation, taking into account storage engine capabilities, operations specified in the statement, and user-specified ALGORITHM and LOCK options. During this phase, a shared upgradeable metadata lock is taken to protect the current table definition.   
+- **Phase 2: Execution**    
+    In this phase, the statement is prepared and executed. Whether the metadata lock is upgraded to exclusive depends on the factors assessed in the initialization phase. If an exclusive metadata lock is required, it is only taken briefly during statement preparation.
+- **Phase 3: Commit Table Definition**     
+    In the commit table definition phase, the metadata lock is upgraded to exclusive to evict the old table definition and commit the new one. Once granted, the duration of the exclusive metadata lock is brief. 
+
+其中execution又可以分为prepare和execute两个阶段，在prepare阶段锁可能会升级为写锁，然后很短时间就会释放。     
+initialization持有的是一个读锁，prepare阶段也可能不升级为写锁，这跟《MySQL 实战 45 讲》的说法不太一致，那么哪个是对的呢？
+
+为了观察DDL执行时的加锁情况，我们先开启MDL的instrument。  
+
+```sql
+UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES'
+WHERE NAME = 'wait/lock/metadata/sql/mdl';
+```
+开启后，我们就可以在`performance_schema.metadata_locks`表里看MDL锁的情况了。   
+首先我们来看一下简单的select语句
+
+| 连接1 | 连接2 |  
+| :--: | :--: |
+| `start transaction;`<br/><br/>`select * from user where id = 1;`||
+||`select * from performance_schema.metadata_locks;`|
+
+metadata_locks里的数据：
+
+| OBJECT_TYPE | OBJECT_SCHEMA      | OBJECT_NAME    | COLUMN_NAME | OBJECT_INSTANCE_BEGIN | LOCK_TYPE   | LOCK_DURATION | LOCK_STATUS | SOURCE            | OWNER_THREAD_ID | OWNER_EVENT_ID |
+| :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: |
+| TABLE       | employees          | user           | NULL        |       140353582818368 | SHARED_READ | TRANSACTION   | GRANTED     | sql_parse.cc:5903 |              49 |             16 |
+| TABLE       | performance_schema | metadata_locks | NULL        |       140353582824896 | SHARED_READ | TRANSACTION   | GRANTED     | sql_parse.cc:5903 |              50 |            114 |
+
+可以看到，简单的select加的MDL锁类型是“SHARED_READ”，同样的方式验证了一下update，锁类型是“SHARED_WRITE”。   
+我们再来看一下DDL
+
+| 连接1 | 连接2 | 连接3|
+| :--: | :--: | :--: |
+| `start transaction;`<br/><br/>`select * from user where id = 1;`|||
+||`alter table user add column test_3 int(11),ALGORITHM=INPLACE;`
+|||`select * from performance_schema.metadata_locks;`|
+
+| OBJECT_TYPE | OBJECT_SCHEMA      | OBJECT_NAME    | COLUMN_NAME | OBJECT_INSTANCE_BEGIN | LOCK_TYPE   | LOCK_DURATION | LOCK_STATUS | SOURCE            | OWNER_THREAD_ID | OWNER_EVENT_ID |
+| :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: |
+| TABLE       | employees          | user           | NULL        |       140353624039104 | SHARED_READ         | TRANSACTION   | GRANTED     | sql_parse.cc:5903  |              49 |             22 |
+| GLOBAL      | NULL               | NULL           | NULL        |       140353625839424 | INTENTION_EXCLUSIVE | STATEMENT     | GRANTED     | sql_base.cc:5459   |              51 |             34 |
+| BACKUP LOCK | NULL               | NULL           | NULL        |       140353626032032 | INTENTION_EXCLUSIVE | TRANSACTION   | GRANTED     | sql_base.cc:5466   |              51 |             34 |
+| SCHEMA      | employees          | NULL           | NULL        |       140353625857984 | INTENTION_EXCLUSIVE | TRANSACTION   | GRANTED     | sql_base.cc:5446   |              51 |             34 |
+| TABLE       | employees          | user           | NULL        |       140353626062272 | SHARED_UPGRADABLE   | TRANSACTION   | GRANTED     | sql_parse.cc:5903  |              51 |             34 |
+| TABLESPACE  | NULL               | employees/user | NULL        |       140353626011872 | INTENTION_EXCLUSIVE | TRANSACTION   | GRANTED     | lock.cc:804        |              51 |             34 |
+| TABLE       | employees          | #sql-4c05_a    | NULL        |       140353626061904 | EXCLUSIVE           | STATEMENT     | GRANTED     | sql_table.cc:16657 |              51 |             34 |
+| TABLE       | employees          | user           | NULL        |       140353626075200 | EXCLUSIVE           | TRANSACTION   | PENDING     | mdl.cc:3753        |              51 |             34 |
+| TABLE       | performance_schema | metadata_locks | NULL        |       140353580927680 | SHARED_READ         | TRANSACTION   | GRANTED     | sql_parse.cc:5903  |              50 |            119 |
+
+表格滑到最右边，OWNER_THREAD_ID=51是执行alter语句的连接2。     
+可以看到一下子加了很多锁，锁类型有INTENTION_EXCLUSIVE、SHARED_UPGRADABLE、EXCLUSIVE三种。     
+虽然加了EXCLUSIVE写锁，但我们也不能确定这是发生在prepare阶段还是最后的commit阶段。想要验证这个也很简单，去datadir下看看有没有新建的sql-xxxx.ibd文件。结果是没有，说明还在prepare阶段。   
+那么，initialization阶段持有的锁类型，就是SHARED_UPGRADABLE。 
+
+继续在本地尝试其他DDL，看有没有哪种情况下prepare不发生锁升级。    
+
+|语句|
+| :--: |
+|`alter table user alter column age set default 1, ALGORITHM=INSTANT;`|
+|`alter table user rename to user_1,ALGORITHM=INPLACE;`|
+|`alter table user add column test_1 int(11), ALGORITHM=INPLACE, LOCK=NONE;`
+|`alter table user drop column test_1, ALGORITHM=INPLACE, LOCK=NONE;`|
+
+尝试了以上DDL，都会在prepare阶段升级为写锁。大胆揣测一下，目前的DDL都会升级，所以《MySQL 实战 45 讲》里“1. 拿MDL写锁”也没错。
+
+MDL的其他锁类型（LOCK_TYPE）和对象类型（OBJECT_TYPE)可以在[MySQL源码 mdl.h](https://github.com/mysql/mysql-server/blob/3290a66c89eb1625a7058e0ef732432b6952b435/sql/mdl.h)查看。
+
+#### 那我varchar长度不够用了到底怎么办
+varchar长度不够用时，有两个选择
+- 换个长度更长的类型，比如text
+- 加长度，比如varchar(32)变成varchar(64)   
+
+目前最新的8.0版本变更字段类型时用的也是COPY的方式，结合前面的内容，COPY肯定是会阻塞DML的，会对业务造成影响。    
+那么路就只剩一条了，加长度。  
+MySQL5.7支持了INPLACE方式来变更长度，INPLACE方式基本不会影响DML。但也有个坑，varchar的数据如在[0,255]字节范围内，只需要一个额外字节记录长度，而[256, 65535]需要两个。所以如果跨了范围，就会使用COPY。  
+
+
+*user表name varchar(32)是utf8编码，255/3 = 85，所以范围为[0,85] 、 [86, 21845]*
+
+| mysql5.6 | mysql5.7 |
+| :--: | :--: |
+|`alter table user modify column name varchar(85)`<br/><br/>*Query OK, 3014573 rows affected (6.80 sec)*<br/>*Records: 3014573  Duplicates: 0  Warnings: 0*|`alter table user modify column name varchar(85);`<br/><br/>*Query OK, 0 rows affected (0.03 sec)*<br/>*Records: 0  Duplicates: 0  Warnings: 0*|
+||`alter table user modify column name varchar(86);`<br/><br/>*Query OK, 3014573 rows affected (9.65 sec)*<br/>*Records: 3014573  Duplicates: 0  Warnings: 0*|
+
+可以看到，5.6版本使用COPY，从varchar(32)变成varchar(85)就已经需要执行6.8秒。5.7则0.03秒执行完成，0 rows affected 表明没有进行rebuild table。    
+跨范围从varchar(85)变成varchar(86)时，5.7也使用COPY，执行了9.65秒。
+
+综上，如果线上varchar长度不够用了，首先确认下MySQL的版本，如果能使用INPLACE，就可以放心加长度，如果不能，只能寻求业界的其他DDL工具了，比如阿里云的[无锁变更](https://help.aliyun.com/document_detail/98373.html)，[gh-ost](https://github.com/github/gh-ost/?spm=a2c4g.11186623.0.0.19cd60b7WATUGx)等。
+
+#### 如果是其他DDL，怎么知道能不能使用INPLACE或者INSTANT呢？
+第一个方法是查官方手册，[8.0 Online DDL Operations](https://dev.mysql.com/doc/refman/8.0/en/innodb-online-ddl-operations.html), [5.7 Online DDL Operations](https://dev.mysql.com/doc/refman/5.7/en/innodb-online-ddl-operations.html), [5.6 Online DDL Operations](https://dev.mysql.com/doc/refman/5.6/en/innodb-online-ddl-operations.html)。 
+如果表格中Rebuilds Table列为Yes，说明需要重建表，会有一定io和cpu压力。
+如果表格中Permits Concurrent DML为No，说明会阻塞并发DML。
+
+第二个方法，适合不想查手册的懒人or想实践一下的较真人。直接在本地执行你的DDL，指定你希望的ALGORITHM和LOCK子句。如果不支持的话，会直接报错。
+比如：
+
+| mysql5.7 |
+| :--: |
+|`alter table user modify column name varchar(86), ALGORITHM=INPLACE, LOCK=NONE;`<br/><br/>*ERROR 1846 (0A000): ALGORITHM=INPLACE is not supported. Reason: Cannot change column type INPLACE. Try ALGORITHM=COPY.*|
+
+如果没报错，返回的rows affected大于0，说明发生了rebuild table。
+
+#### 其他遗留问题：
+- INPLACE的rebuild table和COPY的rebuild table有什么不一样，为什么INPALACE使用的磁盘空间和io更少？
+- INSTANT只改表结构，INPLACE里Only Modifies Metadata=Yes也是只改表结构，这俩有什么区别吗？为什么8.0才支持INSTANT？
+
+参考：
+1. [全局锁和表锁 ：给表加个字段怎么有这么多阻碍？](https://time.geekbang.org/column/article/69862)
+2. [Data manipulation language](https://en.wikipedia.org/wiki/Data_manipulation_language)
+3. [InnoDB and Online DDL](https://dev.mysql.com/doc/refman/5.6/en/innodb-online-ddl.html)
+4. [Fast Index Creation in the InnoDB Storage Engine](https://docs.oracle.com/cd/E19957-01/mysql-refman-5.5/storage-engines.html#innodb-create-index)
+5. [An Overview of DDL Algorithm’s in MySQL ( covers MySQL 8)](https://mydbops.wordpress.com/2020/03/04/an-overview-of-ddlalgorithms-in-mysql-covers-mysql-8/)
+7. [Rebuilding or Repairing Tables or Indexes](https://dev.mysql.com/doc/refman/5.6/en/rebuilding-tables.html)
+8. [Re: Could you explain about ALGORITHM=INPLACE?](https://forums.mysql.com/read.php?22,643887,643925#msg-643925)
+9. [alter-table](https://dev.mysql.com/doc/refman/5.6/en/alter-table.html)
+10. [MySQL之重建表](https://cloud.tencent.com/developer/article/1653643)
+11. [ALTER TABLE Syntax](https://docs.oracle.com/cd/E19957-01/mysql-refman-5.5/sql-syntax.html#alter-table)
+12. [Problems with ALTER TABLE](https://docs.oracle.com/cd/E19957-01/mysql-refman-5.5/error-handling.html#alter-table-problems)
+13. [MySQL源码 mdl.h](https://github.com/mysql/mysql-server/blob/3290a66c89eb1625a7058e0ef732432b6952b435/sql/mdl.h)
+14. [Fast Index Creation in the InnoDB Storage Engine](https://docs.oracle.com/cd/E19957-01/mysql-refman-5.5/storage-engines.html#innodb-create-index)
