@@ -2,10 +2,10 @@
 title: 牧舟的博客
 SEOTitle: 牧舟的博客
 header-img: img/home-bg.jpg
-email: dktsy@gmail.com
+email: ""
 description: "向阳花木易为春。"
 keyword: "博客, 个人网站, 互联网, Web后端, Web前端"
-url: "https://dktsy.github.io"              # your host, for absolute URL
+url: ""              # your host, for absolute URL
 baseurl: ""                             # for example, '/blog' if your blog hosted on 'host/blog'
 
 
