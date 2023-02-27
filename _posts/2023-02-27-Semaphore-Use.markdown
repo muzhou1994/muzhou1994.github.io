@@ -4,7 +4,7 @@ title:      三个线程交替打印ABC
 subtitle:   Never let your fear decide your fate.
 date:       2023/2/27 15:28
 author:     "MuZhou"
-header-img:  "img/2023/bg01.jpg"
+header-img:  "img/2023/bg01.jpeg"
 catalog: true
 tags:
     - 面试
