@@ -15,6 +15,8 @@ tags:
 
 最近同事面试阿里某部门，被问到了这个题，遥想18年的时候就被问过，记录一下。
 
+### 信号量版本
+
 ```java
 import java.util.concurrent.Semaphore;
 
@@ -53,6 +55,44 @@ public class Test {
         threadB.start();
         threadC.start();
         A.release();
+    }
+}
+
+```
+
+### volatile版本
+同事的方案
+```java
+public class Test {
+
+    static class CustomerRunnable implements Runnable {
+        private static volatile int flag;
+        int remain;
+        String name;
+
+        public CustomerRunnable(String name, Integer remain) {
+            this.name = name;
+            this.remain = remain;
+        }
+
+        public void run() {
+            for (int i = 0; i < 10; ) {
+                if (flag % 3 == remain) {
+                    i++;
+                    System.out.println(name);
+                    flag++;
+                }
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        Thread threadA = new Thread(new CustomerRunnable("A", 0));
+        Thread threadB = new Thread(new CustomerRunnable("B", 1));
+        Thread threadC = new Thread(new CustomerRunnable("C", 2));
+        threadA.start();
+        threadB.start();
+        threadC.start();
     }
 }
 
