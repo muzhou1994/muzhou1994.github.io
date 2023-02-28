@@ -67,11 +67,6 @@ public class Test {
     }
 
     public static void main(String[] args) throws Exception {
-        assignMoney(1, 1);
-        check(assignMoney(2, 2), 2, 2);
-        check(assignMoney(5, 5), 5, 5);
-        check(assignMoney(10, 2), 10, 2);
-
         List<Pair<Integer, Integer>> testCase = new ArrayList<>();
 //        testCase.add(new Pair<>(1, 1));
         testCase.add(new Pair<>(2, 2));
