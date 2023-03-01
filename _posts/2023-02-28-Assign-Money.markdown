@@ -22,13 +22,42 @@ tags:
 其次，优化一下上下限边界，实现**最佳手气金额不能超过红包总额的90%**。  
 假设有n个人，总金额是money，那么前n-1个人合计至少拿走money * 10%，且每个人不得超过总额money * 90%。   
 叠加之后，区间边界就变成了
-```java
-int lowerBound = Math.max(1, money / 10 / (count - 1));
-int upperBound = Math.min(money * 9 / 10, average * 2);
+```
+lowerBound = Math.max(1, money * 0.1 / (count - 1));
+upperBound = Math.min(money * 0.9, average * 2);
 ```
 某些场景下，average * 2 会小于lowerBound。    
 比如6个人分200，lowerBound = 4。假设前4个人手气很好，一共取走了198，剩下的2人此时average * 2 = 2。    
 简单优化一下，如果累计取走金额已到达10%，就使用微信红包的区间[1, average * 2)
+ ```java
+     static List<Integer> assignMoney(int money, int count) {
+        List<Integer> res = new ArrayList<>();
+        if (count < 2) {
+            res.add(money);
+            return res;
+        }
+
+        int remainMoney = money;
+        int lowerBound = (int) Math.ceil(money * 0.1 / (count - 1));
+        int upperBound = (int) Math.ceil(money * 0.9);
+        while (count > 1) {
+            int average = remainMoney / count;
+            if (remainMoney <= money * 0.9) {
+                lowerBound = 1;
+                upperBound = average * 2;
+            }
+            int curMoney = ThreadLocalRandom.current().nextInt(lowerBound, Math.min(average * 2, upperBound));
+            res.add(curMoney);
+            remainMoney -= curMoney;
+            count--;
+        }
+        res.add(remainMoney);
+        return res;
+    }
+ ```
+
+
+加点测试样例，测试一下
 
 ```java
 
