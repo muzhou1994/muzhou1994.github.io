@@ -4,7 +4,7 @@ title:      分配红包算法
 subtitle:   If you're not making mistakes, then you're not making decisions.
 date:       2023/2/28 16:58
 author:     "MuZhou"
-header-img:  "img/2023/bg-02-28.jpg"
+header-img:  "img/2023/bg-02-28.jpeg"
 catalog: true
 tags:
 - 面试
