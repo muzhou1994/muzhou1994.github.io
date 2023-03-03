@@ -12,9 +12,8 @@ tags:
 >设计一个带有过期时间的LRU缓存。
 
 仍旧是同事面试时遇到的题，记录一下我的解法。  
-经典的LRU题目，leetcode上有初始版本，[lru-cache](https://leetcode.com/problems/lru-cache/)。
-这道面试题在leetcode题目的基础上增加了过期时间，到达容量上限后，先逐出过期的数据，然后再逐出  
-最久未使用的数据。   
+经典的LRU题目，leetcode上有初始版本，[lru-cache](https://leetcode.com/problems/lru-cache/)。  
+这道面试题在leetcode题目的基础上增加了过期时间，到达容量上限后，先逐出过期的数据，然后再逐出最久未使用的数据。   
 仿照leetcode的题目，本题大致是实现这样一个数据结构。
 ```java
    class LRUCache {
@@ -41,8 +40,9 @@ tags:
 ```
 
 #### LinkedHashMap + 惰性删除
-众所周知，双向链表 + hash map可以实现LRU，而Java里LinkedHashMap正好两者都有。可以说，用LinkedHashMap实现LRU，是众多Javaer面试必会的题目之一了。     
+众所周知，双向链表 + hash map可以实现LRU，而Java里LinkedHashMap正好两者都有。可以说，用LinkedHashMap实现LRU，也是众多Javaer面试必会的题目之一。       
 本题还需要处理数据过期，而逐出过期数据不由让人想起Redis的惰性删除策略。      
+
 利用LinkedHashMap，再仿照Redis的惰性删除
 ```java
 public class LRUCache extends LinkedHashMap<Integer, LRUCache.Node> {
@@ -270,4 +270,4 @@ put操作的最后一步是调用afterNodeInsertion，通过removeEldestEntry判
   - 定时删除和惰性删除的调和版本，可以通过调参来控制对CPU和内存影响。
 
 本文只提供了惰性删除策略的实现，网上也有很多实现定时删除的文章，可以参考。   
-此外，LinkedHashMap并不是线程安全的，如果需要保证线程安全，可以换成ConcurrentLinkedDeque + ConcurrentHashMap来实现。
+此外，LinkedHashMap并不是线程安全的，如果需要保证线程安全，可以换成ConcurrentLinkedDeque + ConcurrentHashMap。
