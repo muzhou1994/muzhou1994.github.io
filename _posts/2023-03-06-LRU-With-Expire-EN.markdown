@@ -1,21 +1,23 @@
 ---
 layout:     post
-title:      实现带过期时间的LRU
+title:      LRU Cache with expiry time
 subtitle:   Implementation of LRU cache with an expiry time for each entry
-date:       2023/3/2 17:46
+date:       2023/3/6 14:58
 author:     "MuZhou"
-header-img:  "img/2023/bg-03-02.jpeg"
+header-img:  "img/2023/bg-03-06.jpeg"
 catalog: true
 tags:
-- 面试
+- English
+- interview
 ---
->设计一个带有过期时间的LRU缓存。  
+> Design an LRU cache that expires entries base on their individual expiry times, evicting expired entries before the least recently used entries.
 
-仍旧是同事面试时遇到的题，记录一下我的解法。
-经典的LRU题目，leetcode上有初始版本，[lru-cache](https://leetcode.com/problems/lru-cache/)。  
-这道面试题在leetcode题目的基础上增加了过期时间，到达容量上限后，先逐出过期的数据，然后再逐出最久未使用的数据。   
-仿照leetcode的题目，本题大致是实现这样一个数结构。
+It's still a question that my colleague was asked during his interview. Let me share my solution.        
 
+LRU cache is a classic question, and there is an original version of it on LeetCode called [lru-cache](https://leetcode.com/problems/lru-cache/).     
+In this question, an expiry time is added to each entry. Once the max capacity of the cache is reached, expired entries are evicted first, followed by the least recently used entries.      
+
+Like the question on the LeetCode, this question requires implementing such a data structure:
 ```java
    class LRUCache {
 
@@ -40,11 +42,12 @@ tags:
  */ 
 ```
 
-#### LinkedHashMap + 惰性删除
-众所周知，双向链表 + hash map可以实现LRU，而Java里LinkedHashMap正好两者都有。可以说，用LinkedHashMap实现LRU，也是众多Javaer面试必会的题目之一。       
-本题还需要处理数据过期，而逐出过期数据不由让人想起Redis的惰性删除策略。      
+#### LinkedHashMap + passive deletion
+As we know, the LRU cache can be implemented by a doubly linked list and a hash map. Coincidentally, the LinkedHashMap in Java contains both of them. Implementing an LRU cache by LinkedHashMap is therefore a common interview question for Java developers.      
 
-利用LinkedHashMap，再仿照Redis的惰性删除   
+In this question, we have to deal with expired entries, and expelling expired entries here is similar to Redis's passive expiration.
+
+We can solve the problem using a LinkedHashMap and imitating Redis as follows
 ```java
 public class LRUCache extends LinkedHashMap<Integer, LRUCache.Node> {
     int capacity;
@@ -106,10 +109,9 @@ public class LRUCache extends LinkedHashMap<Integer, LRUCache.Node> {
 }
 ```
 
-再仔细看看LinkedHashMap的get和put方法，了解下具体过程。    
-### get过程
-
-java.util.LinkedHashMap#get在获取数据之后，如果按访问排序（accessOrder=true)，会执行afterNodeAccess方法，将数据移到双向链表尾部。  
+Let's dive into the details of the 'get' and 'put' methods
+### get operation
+When using the 'access-order' iteration order,  invoking the 'java.util.LinkedHashMap#get' method triggers the 'afterNodeAccess' method, which moves the accessed node to the end of the doubly linked list.
 ```java
     /**
      * The iteration ordering method for this linked hash map: {@code true}
@@ -169,9 +171,9 @@ java.util.LinkedHashMap#get在获取数据之后，如果按访问排序（acces
     }
 ```
 
-### put过程
-put的过程比get更复杂一些，首先是java.util.HashMap#put和putVal，这代码也是经典Java面试题目之一，不同jdk版本实现也不一样，截取jdk 17👇   
-
+### put operation
+The 'put' operation is more complicated than 'get' and relies on the 'java.util.HashMap#put' method. This code block is a classic Java interview question, and its implementation varies from different JDK versions.     
+The code snippet below is from JDK 17*
 ```java
 
     /**
@@ -243,7 +245,8 @@ put的过程比get更复杂一些，首先是java.util.HashMap#put和putVal，�
         return null;
     }
 ```
-跟本题相关的重点是afterNodeAccess和afterNodeInsertion方法。afterNodeAccess在get时也会调用，将数据移到双向链表尾部。   
+The 'afterNodeAccess' method and the 'afterNodeInsertion' method are the emphases related to this problem.    
+We are already familiar with 'afterNodeAccess', which is mentioned in the previous 'get' operation and moves the accessed node to the end of the doubly linked list
 ```java
     void afterNodeInsertion(boolean evict) { // possibly remove eldest
         LinkedHashMap.Entry<K,V> first;
@@ -257,18 +260,20 @@ put的过程比get更复杂一些，首先是java.util.HashMap#put和putVal，�
         return false;
     }
 ```
-put操作的最后一步是调用afterNodeInsertion，通过removeEldestEntry判断是否需要删除元素。  
-本题的解答就是重写了removeEldestEntry，来实现必要时删除过期元素。   
+The 'put' operation's final step involves calling the 'afterNodeInsertion' method, which may trigger the removal of the eldest node depending on the return value of the 'removeEldestEntry' method.    
 
-### 其他
-总的来说，过期key删除有三个策略：  
-- 定时删除：创建定时器，到达过期时间时，就删除key。
-  - 最简单的实现：new一个线程，死循环执行删除任务。
-  - 内存友好，不会让过期数据占存储空间，但是会增加CPU压力。
-- 惰性删除：到必要时候才删除key，比如get一个过期key时。
-  - 内存不友好，CPU友好
-- 定期删除：间隔一段时间，随机抽样一批key，删除其中过期的
-  - 定时删除和惰性删除的调和版本，可以通过调参来控制对CPU和内存影响。
+In the solution we presented above, we override the 'removeEldestEntry' method to remove expired nodes when necessary.
 
-本文只提供了惰性删除策略的实现，网上也有很多实现定时删除的文章，可以参考。   
-此外，LinkedHashMap并不是线程安全的，如果需要保证线程安全，可以换成ConcurrentLinkedDeque + ConcurrentHashMap。
+### Other
+There are generally three policies for expelling expired keys:
+- Scheduled deletion: create a scheduler that deletes expired keys once their expiry time is reached.
+    - the simplist implementation: create a new thread and delete expired keys in an infinite loop.
+    - it's memory-friendly since the expired data is deleted immediately, freeing up storage space. But it will increase the load on the CPU.
+- Passive Deletion: Only delete keys when necessary, such as when accessing an expired key.
+    - it's CPU-friendly but can be memory-intensive.
+- Periodic deletion: Sample a bacth of key periodically and delete outdated ones.
+    - it's a compromise between scheduled and passive deletion, allowing for great control over the impact on CPU and memory by tuning parameters
+
+This article provides an implementation of the passive deletion policy. However, there are many other articles avaible online that provide implementations of the scheduled deletion policy, which may be useful for reference.
+
+Additionally, it should be noted that 'LinkedHashMap' is not thread-safe. To ensure thread-safety, it is recommended to use 'ConcurrentLinkedDeque' and 'ConcurrentHashMap'.
