@@ -172,7 +172,7 @@ When using the 'access-order' iteration order,  invoking the 'java.util.LinkedHa
 ```
 
 ### put operation
-The 'put' operation is more complicated than 'get' and relies on the 'java.util.HashMap#put' method. This code block is a classic Java interview question, and its implementation varies from different JDK versions.     
+The 'put' operation is more complicated than 'get' and relies on the 'java.util.HashMap#put' method. This code block is involved in many commonly asked Java interview question, and its implementation varies from different JDK versions.     
 The code snippet below is from JDK 17*
 ```java
 
