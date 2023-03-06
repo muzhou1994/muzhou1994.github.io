@@ -47,7 +47,7 @@ As we know, the LRU cache can be implemented by a doubly linked list and a hash 
 
 In this question, we have to deal with expired entries, and expelling expired entries here is similar to Redis's passive expiration.
 
-We can solve the problem using a LinkedHashMap and imitating Redis as follows
+We can solve the problem using a LinkedHashMap and imitating Redis as follows:
 ```java
 public class LRUCache extends LinkedHashMap<Integer, LRUCache.Node> {
     int capacity;
@@ -173,7 +173,7 @@ When using the 'access-order' iteration order,  invoking the 'java.util.LinkedHa
 
 ### put operation
 The 'put' operation is more complicated than 'get' and relies on the 'java.util.HashMap#put' method. This code block is involved in many commonly asked Java interview question, and its implementation varies from different JDK versions.     
-The code snippet below is from JDK 17*
+The code snippet below is from JDK 17.
 ```java
 
     /**
@@ -246,7 +246,7 @@ The code snippet below is from JDK 17*
     }
 ```
 The 'afterNodeAccess' method and the 'afterNodeInsertion' method are the emphases related to this problem.    
-We are already familiar with 'afterNodeAccess', which is mentioned in the previous 'get' operation and moves the accessed node to the end of the doubly linked list
+We are already familiar with 'afterNodeAccess', which is mentioned in the previous 'get' operation and moves the accessed node to the end of the doubly linked list.
 ```java
     void afterNodeInsertion(boolean evict) { // possibly remove eldest
         LinkedHashMap.Entry<K,V> first;
