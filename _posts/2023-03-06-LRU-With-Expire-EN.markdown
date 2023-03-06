@@ -7,8 +7,8 @@ author:     "MuZhou"
 header-img:  "img/2023/bg-03-06.jpeg"
 catalog: true
 tags:
-- English
-- interview
+  - English
+  - interview
 ---
 > Design an LRU cache that expires entries base on their individual expiry times, evicting expired entries before the least recently used entries.
 
