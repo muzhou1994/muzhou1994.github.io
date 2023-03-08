@@ -1,7 +1,7 @@
 ---
 layout:     post
-title:      how to make technology selection
-subtitle:   one of the most important skills for an experienced developer to master
+title:      How to make technology selection
+subtitle:   One of the most important skills for an experienced developer to master
 date:       2023/3/7 16:03
 author:     "MuZhou"
 header-img:  "img/2023/bg-03-07.jpeg"
