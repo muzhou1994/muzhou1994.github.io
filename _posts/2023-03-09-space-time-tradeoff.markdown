@@ -2,7 +2,7 @@
 layout:     post
 title:      Space-time tradeoff
 subtitle:   examples of the space-time tradeoff
-date:       2023/3/10 11:01
+date:       2023/3/09 11:01
 author:     "MuZhou"
 header-img:  "img/2023/bg-03-10.jpeg"
 catalog: true
