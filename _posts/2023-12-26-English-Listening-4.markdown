@@ -5,7 +5,7 @@ subtitle:   The master has failed more times than the beginner has even tried.
 date:       2023/12/26 15:35
 author:     "MuZhou"
 header-img:  "img/2023/bg-12-22.jpeg"
-catalog: true
+catalog: false
 tags:
 - English
 ---
