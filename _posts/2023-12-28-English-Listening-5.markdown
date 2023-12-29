@@ -5,7 +5,7 @@ subtitle:   The journey of a thousand miles begins with a single step.
 date:       2023/12/28 21:36
 author:     "MuZhou"
 header-img:  "img/2023/bg-12-28.jpeg"
-catalog: true
+catalog: false
 tags:
 - English
 ---
