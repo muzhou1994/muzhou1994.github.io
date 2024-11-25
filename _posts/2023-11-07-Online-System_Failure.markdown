@@ -7,7 +7,7 @@ author:     "MuZhou"
 header-img:  "img/2023/bg-11-07.jpeg"
 catalog: true
 tags:
-- 线上故障
+- 线上问题
 - 分享
 ---
 前段时间负责了一个项目，预测QPS会比较高，上线之前也进行了压测，QPS压到22w系统还很稳定，并且仍有一些余力，已经满足业务需求。

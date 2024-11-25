@@ -7,7 +7,7 @@ author:     "MuZhou"
 header-img:  "img/2021/bg-mysql-ddl-header.jpg"
 catalog: true
 tags:
-    - mysql
+    - MySQL
     - 面向工资编程
 ---
 最近收到了一个线上报错，线上某个业务表（数据量7000w行）varchar(5120)字段长度不够用了。  
