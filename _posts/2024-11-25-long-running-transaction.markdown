@@ -5,7 +5,7 @@ subtitle:   Jumping from failure to failure with undiminished enthusiasm is the 
 date:       2024/11/25 13:51
 author:     "MuZhou"
 header-img:  "img/2024/bg-11-25.jpeg"
-catalog: true
+catalog: false
 tags:
     - 线上问题
     - MySQL
