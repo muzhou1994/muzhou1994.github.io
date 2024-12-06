@@ -4,6 +4,7 @@ description: "向所有虚度的时光宣战"
 ---
 
 {% for post in paginator.posts %}
+<% if (!post.hide_in_home) { %>
 <div class="post-preview">
     <a href="{{ post.url | prepend: site.baseurl }}">
         <h2 class="post-title">
@@ -23,6 +24,8 @@ description: "向所有虚度的时光宣战"
     </p>
 </div>
 <hr>
+<% } %>
+
 {% endfor %}
 
 <!-- Pager -->

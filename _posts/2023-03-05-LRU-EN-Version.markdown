@@ -6,6 +6,7 @@ date:       2023/3/5 15:51
 author:     "MuZhou"
 header-img:  "img/2023/bg-03-06.jpeg"
 catalog: true
+hide_in_home: true
 tags:
 - interview
 - English
