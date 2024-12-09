@@ -6,6 +6,7 @@ date:       2018/11/14 下午2:31
 author:     "MuZhou"
 header-img:  "img/2018/bg-meituanInterview-header.jpeg"
 catalog: true
+hide_in_home: false
 tags:
     - 动态规划
     - 面试
