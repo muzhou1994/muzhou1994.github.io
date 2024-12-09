@@ -6,7 +6,7 @@ date:       2021/12/3 11:42
 author:     "MuZhou"
 header-img:  "img/2021/bg-mysql-ddl-header.jpg"
 catalog: true
-hide_in_home: false
+show_in_home: true
 tags:
     - MySQL
     - 面向工资编程

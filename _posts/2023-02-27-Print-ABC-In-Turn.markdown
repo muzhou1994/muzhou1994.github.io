@@ -6,7 +6,7 @@ date:       2023/2/27 15:28
 author:     "MuZhou"
 header-img:  "img/2023/bg01.jpeg"
 catalog: true
-hide_in_home: false
+show_in_home: true
 tags:
     - 面试
 ---

@@ -6,7 +6,7 @@ date:       2024/11/25 13:51
 author:     "MuZhou"
 header-img:  "img/2024/bg-11-25.jpeg"
 catalog: false
-hide_in_home: false
+show_in_home: true
 tags:
     - 线上问题
     - MySQL

@@ -6,7 +6,7 @@ date:       2023/11/22 15:25
 author:     "MuZhou"
 header-img:  "img/2023/bg-11-22.jpeg"
 catalog: true
-hide_in_home: false
+show_in_home: true
 tags:
 - 分享
 - 线上问题

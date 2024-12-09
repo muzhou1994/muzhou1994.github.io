@@ -6,7 +6,7 @@ date:       2021/12/30 10:59
 author:     "MuZhou"
 header-img:  "img/2021/bg-kafka-message-backlog-header.jpg"
 catalog: true
-hide_in_home: false
+show_in_home: true
 tags:
     - kafka
 ---
